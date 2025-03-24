@@ -1,4 +1,4 @@
-# maevis
+# backend
 
 To install dependencies:
 
