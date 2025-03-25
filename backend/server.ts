@@ -24,7 +24,7 @@ app.post("/chat", async ({ body, set }) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "mistral", // ✅ Using the Mistral model
+        model: "deepseek-r1",
         prompt: message,
         stream: false,
       }),
@@ -38,7 +38,10 @@ app.post("/chat", async ({ body, set }) => {
     const data = await response.json();
     console.log("✅ Ollama API Response:", data);
 
-    return { response: data.response ?? "No response from Ollama" };
+    // Remove <think> tags from the response
+    const cleanResponse = data.response.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+
+    return { response: cleanResponse || "No response from Ollama" };
   } catch (error) {
     console.error("❌ Error querying Ollama:", error);
     return { error: "Something went wrong. Try again." };
