@@ -20,7 +20,7 @@
       const res = await fetch("http://localhost:3000/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage }),
+        body: JSON.stringify({ message: userMessage, sessionId: "unique-session-id" }), // Assuming sessionId is unique and generated dynamically
       });
 
       const data = await res.json();
@@ -38,12 +38,34 @@
   }
 </script>
 
+<div class="bubbles">
+  <!-- Generate bubbles dynamically -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const bubbleContainer = document.querySelector(".bubbles");
+      for (let i = 0; i < 20; i++) {
+        let bubble = document.createElement("div");
+        bubble.classList.add("bubble");
+        let size = Math.random() * 50 + 10; // Random size between 10px and 60px
+        let duration = Math.random() * 5 + 5; // Random duration between 5s and 10s
+        let left = Math.random() * 100; // Random position across the screen
+
+        bubble.style.width = `${size}px`;
+        bubble.style.height = `${size}px`;
+        bubble.style.left = `${left}%`;
+        bubble.style.animationDuration = `${duration}s`;
+        bubbleContainer.appendChild(bubble);
+      }
+    });
+  </script>
+</div>
+
 <div class="chat-container">
   <h1>Maevis Chatbot</h1>
 
   <div class="message-box">
     {#each chatHistory as msg}
-      <p class="{msg.role}-message"><strong>{msg.role}:</strong> {msg.text}</p>
+      <p class="{msg.role}-message">{msg.text}</p>
     {/each}
     {#if loading}
       <p class="loading">Maevis is thinking...</p>

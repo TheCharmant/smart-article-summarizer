@@ -3,6 +3,9 @@ import { Elysia } from "elysia";
 const app = new Elysia();
 const OLLAMA_API = "http://localhost:11434/api/generate";
 
+// In-memory session store (for simplicity)
+const sessionStore = new Map<string, { messages: string[] }>();
+
 // Middleware to handle CORS
 app.options("/chat", ({ set }) => {
   set.headers = {
@@ -13,11 +16,27 @@ app.options("/chat", ({ set }) => {
   return new Response(null, { status: 204 });
 });
 
-app.post("/chat", async ({ body, set }) => {
+app.post("/chat", async ({ body, set, headers }) => {
   set.headers["Access-Control-Allow-Origin"] = "*";
 
-  const { message } = body as { message?: string };
-  if (!message) return { error: "Please enter a message." };
+  const { message, sessionId } = body as { message?: string; sessionId?: string };
+  
+  if (!message || !sessionId) {
+    return { error: "Please provide both message and sessionId." };
+  }
+
+  // Retrieve or initialize session data
+  let session = sessionStore.get(sessionId);
+  if (!session) {
+    session = { messages: [] };
+    sessionStore.set(sessionId, session);
+  }
+
+  // Add the new message to the session's message history
+  session.messages.push(message);
+
+  // Construct a more comprehensive prompt including history
+  const prompt = session.messages.map((msg) => `User: ${msg}`).join("\n");
 
   try {
     const response = await fetch(OLLAMA_API, {
@@ -25,7 +44,7 @@ app.post("/chat", async ({ body, set }) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "deepseek-r1",
-        prompt: message,
+        prompt: `${prompt}\nAI:`, // Including the history as context
         stream: false,
       }),
     });
@@ -41,7 +60,7 @@ app.post("/chat", async ({ body, set }) => {
     // Remove <think> tags from the response
     const cleanResponse = data.response.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 
-    return { response: cleanResponse || "No response from Ollama" };
+    return { response: cleanResponse || "No response from Ollama", history: session.messages };
   } catch (error) {
     console.error("❌ Error querying Ollama:", error);
     return { error: "Something went wrong. Try again." };
