@@ -1,83 +1,99 @@
 <script lang="ts">
-  import { tick } from "svelte";
-  import "./chat.css";
+  import PromptCard from '$lib/promptCard.svelte';
+
+  let id = "";
+  let name = "";
+  let age: number | null = null;
+  let loggedIn = false;
 
   let message = "";
-  let chatHistory: { role: string; text: string }[] = [];
-  let loading = false;
+  let prompts: { id: number; message: string; timestamp: string }[] = [];
+  let aiResponse = "";
+
+  const API = "http://localhost:3000";
+
+  async function login() {
+    if (!id || !name || age === null) return alert("Please fill all fields.");
+
+    const res = await fetch(`${API}/auth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, name, age })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      loggedIn = true;
+      loadPrompts();
+    }
+  }
 
   async function sendMessage() {
-    if (!message.trim()) return;
+    if (!message) return;
+    const res = await fetch(`${API}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, sessionId: id })
+    });
 
-    const userMessage = message;
-    message = ""; // Clear input immediately
-    await tick(); // Ensure UI updates
+    const data = await res.json();
+    aiResponse = data.response || "No response.";
+    message = "";
+    await loadPrompts();
+  }
 
-    chatHistory = [...chatHistory, { role: "user", text: userMessage }];
-    loading = true;
+  async function loadPrompts() {
+    const res = await fetch(`${API}/prompts/${id}`);
+    const data = await res.json();
+    prompts = data.prompts;
+  }
 
-    try {
-      const res = await fetch("http://localhost:3000/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage, sessionId: "unique-session-id" }), // Assuming sessionId is unique and generated dynamically
-      });
+  async function deletePrompt(promptId: number) {
+    await fetch(`${API}/prompt/${promptId}`, { method: "DELETE" });
+    await loadPrompts();
+  }
 
-      const data = await res.json();
-
-      chatHistory = [
-        ...chatHistory,
-        { role: data.error ? "system" : "ai", text: data.error ? `⚠️ ${data.error}` : data.response }
-      ];
-    } catch (error) {
-      chatHistory = [...chatHistory, { role: "system", text: "⚠️ Could not get response from AI." }];
-      console.error("❌ Fetch error:", error);
-    } finally {
-      loading = false;
-    }
+  async function updatePrompt(promptId: number, newMsg: string) {
+    await fetch(`${API}/prompt/${promptId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: newMsg })
+    });
+    await loadPrompts();
   }
 </script>
 
-<div class="bubbles">
-  <!-- Generate bubbles dynamically -->
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const bubbleContainer = document.querySelector(".bubbles");
-      for (let i = 0; i < 20; i++) {
-        let bubble = document.createElement("div");
-        bubble.classList.add("bubble");
-        let size = Math.random() * 50 + 10; // Random size between 10px and 60px
-        let duration = Math.random() * 5 + 5; // Random duration between 5s and 10s
-        let left = Math.random() * 100; // Random position across the screen
+{#if !loggedIn}
+  <div class="p-4 max-w-md mx-auto space-y-4">
+    <h1 class="text-2xl font-bold">Login</h1>
+    <input class="w-full p-2 border rounded" placeholder="ID" bind:value={id} />
+    <input class="w-full p-2 border rounded" placeholder="Name" bind:value={name} />
+    <input class="w-full p-2 border rounded" type="number" placeholder="Age" bind:value={age} />
+    <button class="bg-blue-500 text-white px-4 py-2 rounded" on:click={login}>Login</button>
+  </div>
+{:else}
+  <div class="p-4 max-w-2xl mx-auto space-y-4">
+    <h1 class="text-2xl font-bold">Welcome, {name}!</h1>
 
-        bubble.style.width = `${size}px`;
-        bubble.style.height = `${size}px`;
-        bubble.style.left = `${left}%`;
-        bubble.style.animationDuration = `${duration}s`;
-        bubbleContainer.appendChild(bubble);
-      }
-    });
-  </script>
-</div>
+    <div class="flex gap-2">
+      <input
+        class="flex-1 p-2 border rounded"
+        placeholder="Enter your article or message..."
+        bind:value={message}
+      />
+      <button class="bg-green-500 text-white px-4 py-2 rounded" on:click={sendMessage}>Send</button>
+    </div>
 
-<div class="chat-container">
-  <h1>Maevis Chatbot</h1>
-
-  <div class="message-box">
-    {#each chatHistory as msg}
-      <p class="{msg.role}-message">{msg.text}</p>
-    {/each}
-    {#if loading}
-      <p class="loading">Maevis is thinking...</p>
+    {#if aiResponse}
+      <div class="bg-gray-100 p-4 rounded shadow">
+        <strong>AI Summary:</strong>
+        <p>{aiResponse}</p>
+      </div>
     {/if}
-  </div>
 
-  <div class="input-container">
-    <input 
-      bind:value={message} 
-      placeholder="Type a message..." 
-      on:keydown={(e) => e.key === 'Enter' && sendMessage()} 
-    />
-    <button on:click={sendMessage} disabled={loading}>Send</button>
+    <h2 class="text-xl font-semibold mt-6">Your Prompts</h2>
+    {#each prompts as prompt (prompt.id)}
+      <PromptCard {prompt} onDelete={deletePrompt} onUpdate={updatePrompt} />
+    {/each}
   </div>
-</div>
+{/if}
