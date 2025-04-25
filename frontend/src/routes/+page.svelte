@@ -6,6 +6,7 @@
   let name = "";
   let age: number | null = null;
   let loggedIn = false;
+  let loading = false;
 
   // Chat state
   let message = "";
@@ -34,19 +35,24 @@
   }
 
   async function sendMessage() {
-    if (!message) return;
+  if (!message) return;
 
-    const response = await fetch(`${API_BASE_URL}/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, sessionId: id })
-    });
+  loading = true; // Start loading
 
-    const data = await response.json();
-    aiResponse = data.response || "No response.";
-    message = "";
-    await loadPrompts();
-  }
+  const response = await fetch(`${API_BASE_URL}/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, sessionId: id })
+  });
+
+  const data = await response.json();
+  aiResponse = data.response || "No response.";
+
+  await loadPrompts();
+
+  loading = false; // Done loading
+}
+
 
   async function loadPrompts() {
     const response = await fetch(`${API_BASE_URL}/prompts/${id}`);
@@ -307,19 +313,37 @@
   }
 
   .summarize-button {
-    background-color: #2ecc71;
-    color: white;
-    border: none;
-    padding: 12px 25px;
-    border-radius: 4px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-  }
-        
-  .summarize-button:hover {
-    background-color: #27ae60;
-  }
+  background-color: #4a5568; /* Slate Gray */
+  color: #f1f5f9;            /* Light text for contrast */
+  border: none;
+  padding: 12px 25px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.25s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 10px rgba(74, 85, 104, 0.15);
+}
+
+.summarize-button:hover {
+  background-color: #2d3748; /* Darker slate on hover */
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(45, 55, 72, 0.25);
+}
+
+.summarize-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 3px 6px rgba(45, 55, 72, 0.15);
+}
+
+.summarize-button:disabled {
+  background-color: #a0aec0; /* Muted gray-blue for disabled state */
+  color: #e2e8f0;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
 
   .counter {
     font-size: 14px;
@@ -427,7 +451,7 @@
             <h3>Input Text</h3>
             <textarea
               class="text-area"
-              placeholder="Enter your article or message..."
+              placeholder="Enter your article..."
               bind:value={message}
             ></textarea>
             <div class="counter">
@@ -451,7 +475,9 @@
         </div>
       
         <div class="footer">
-          <button class="summarize-button" on:click={sendMessage}><i class="fas fa-magic"></i>Summarize</button>
+          <button class="summarize-button" on:click={sendMessage} disabled={loading}>
+            <i class="fas fa-magic"></i>{loading ? ' Summarizing...' : ' Summarize'}
+          </button>          
         </div>
       </div>
     </div>
