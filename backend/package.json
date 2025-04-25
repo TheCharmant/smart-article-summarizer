@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
     "cors": "^2.8.5",
+    "elysia": "^1.2.25",
     "express": "^4.21.2"
   }
 }
