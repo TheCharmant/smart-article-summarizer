@@ -212,6 +212,7 @@
   .login {
     color: rgb(255, 255, 255);
     margin-bottom: 20px;
+    align-items: center;
   }
 
   .welcome {
@@ -403,7 +404,7 @@
 
 {#if !loggedIn}
   <div class="login-container">
-    <h1 class="text-2xl font-bold login">Login</h1>
+    <h1 class="text-2xl font-bold text-center w-full my-[10px]">Login</h1>
     <input class="input-field" placeholder="ID" bind:value={id} />
     <input class="input-field" placeholder="Name" bind:value={name} />
     <input class="input-field" type="number" placeholder="Age" bind:value={age} />
